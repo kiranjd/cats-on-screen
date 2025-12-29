@@ -22,7 +22,7 @@ Remember those desktop pets from the 90s? This is that, but cuter. A kawaii oran
 ### Build from source
 
 ```bash
-git clone https://github.com/niceworkjd/cats-on-screen.git
+git clone https://github.com/kiranjd/cats-on-screen.git
 cd cats-on-screen
 ./build.sh
 open CatOnScreen.app
