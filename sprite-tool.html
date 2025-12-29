@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Sprite Alignment Tool</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 { margin-bottom: 10px; color: #f39c12; }
+        h2 { margin: 15px 0 10px; color: #3498db; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        h3 { color: #9b59b6; font-size: 13px; margin-bottom: 8px; }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            background: #16213e;
+            border: none;
+            color: #888;
+            padding: 10px 20px;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .tab.active { background: #0f3460; color: #f39c12; }
+        .tab:hover { color: #fff; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .controls {
+            background: #16213e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            font-size: 13px;
+        }
+        .controls label { display: flex; align-items: center; gap: 6px; }
+        .controls input[type="range"] { width: 100px; }
+        .controls input[type="number"] { width: 55px; background: #0f3460; border: 1px solid #444; color: #fff; padding: 4px; border-radius: 4px; }
+        .controls select { background: #0f3460; border: 1px solid #444; color: #fff; padding: 4px 8px; border-radius: 4px; }
+        .controls button {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .controls button:hover { background: #c0392b; }
+        .controls button.primary { background: #27ae60; }
+        .controls button.primary:hover { background: #1e8449; }
+        .controls button.secondary { background: #3498db; }
+
+        /* Groups */
+        .group {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #9b59b6;
+        }
+        .group.movement { border-left-color: #27ae60; }
+        .group.sitting { border-left-color: #e74c3c; }
+        .group.golden { border-left-color: #f39c12; }
+
+        /* Comparison area */
+        .comparison-stage {
+            background: #0a0a1a;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 30px;
+        }
+        .ground-line {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            height: 2px;
+            background: #e74c3c;
+        }
+        .ground-label {
+            position: absolute;
+            bottom: 35px;
+            right: 25px;
+            font-size: 10px;
+            color: #e74c3c;
+        }
+
+        .compare-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .compare-item img {
+            image-rendering: pixelated;
+            position: relative;
+        }
+        .compare-item .label {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+        }
+        .compare-item .baseline { color: #27ae60; font-weight: bold; }
+        .compare-item .adjusting { color: #f39c12; font-weight: bold; }
+        .compare-item .info {
+            font-size: 10px;
+            color: #666;
+        }
+
+        /* Sprite grid */
+        .sprite-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            background: #0a0a1a;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .sprite-cell {
+            background: #16213e;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .sprite-cell:hover { border-color: #3498db; }
+        .sprite-cell.selected { border-color: #f39c12; }
+        .sprite-cell img {
+            max-width: 80px;
+            max-height: 80px;
+            image-rendering: pixelated;
+        }
+        .sprite-cell .name {
+            font-size: 10px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Adjustment panel */
+        .adjust-panel {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .adjust-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .adjust-row label {
+            min-width: 80px;
+            font-size: 12px;
+        }
+        .adjust-row input[type="range"] { flex: 1; max-width: 200px; }
+        .adjust-row input[type="number"] {
+            width: 60px;
+            background: #16213e;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        .adjust-row .value { min-width: 50px; font-size: 12px; color: #f39c12; }
+
+        /* Animation preview strip */
+        .anim-strip {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            background: #0a0a1a;
+            padding: 10px;
+            border-radius: 6px;
+            overflow-x: auto;
+            position: relative;
+        }
+        .anim-strip::before {
+            content: '';
+            position: absolute;
+            bottom: 15px;
+            left: 10px;
+            right: 10px;
+            height: 1px;
+            background: rgba(231, 76, 60, 0.3);
+        }
+        .anim-strip .frame {
+            flex-shrink: 0;
+            text-align: center;
+        }
+        .anim-strip .frame img {
+            max-height: 100px;
+            image-rendering: pixelated;
+        }
+        .anim-strip .frame .idx {
+            font-size: 9px;
+            color: #666;
+        }
+        .anim-strip .frame.current img {
+            outline: 2px solid #f39c12;
+        }
+
+        /* Live preview boxes */
+        .preview-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .preview-box {
+            background: #0a0a1a;
+            border-radius: 8px;
+            padding: 10px;
+            min-width: 160px;
+        }
+        .preview-box .title {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .preview-canvas {
+            width: 140px;
+            height: 110px;
+            background: linear-gradient(to bottom, #2c3e50 0%, #1a1a2e 100%);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .preview-canvas img {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            image-rendering: pixelated;
+        }
+        .preview-canvas .ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e74c3c;
+        }
+
+        /* Transition preview */
+        .transition-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #0a0a1a;
+            border-radius: 8px;
+        }
+        .transition-arrow {
+            color: #f39c12;
+            font-size: 20px;
+        }
+        .transition-box {
+            text-align: center;
+        }
+        .transition-box .preview-canvas {
+            margin: 0 auto;
+        }
+        .transition-box .label {
+            font-size: 10px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Export */
+        .export-box {
+            background: #0a0a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .export-box pre {
+            background: #16213e;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 11px;
+            color: #2ecc71;
+            max-height: 300px;
+        }
+
+        /* Overlay comparison */
+        .overlay-mode .compare-item img:not(:first-child) {
+            position: absolute;
+            opacity: 0.5;
+        }
+
+        /* Grid overlay */
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            display: none;
+        }
+        .grid-overlay.visible {
+            display: block;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .grid-overlay .center-line-v {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(52, 152, 219, 0.5);
+        }
+        .grid-overlay .center-line-h {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(52, 152, 219, 0.5);
+        }
+
+        /* Per-frame indicator */
+        .per-frame-active .adjust-panel {
+            border: 2px solid #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cat Sprite Alignment Tool</h1>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('compare')">Compare & Adjust</button>
+        <button class="tab" onclick="showTab('groups')">Activity Groups</button>
+        <button class="tab" onclick="showTab('transitions')">Transitions</button>
+        <button class="tab" onclick="showTab('all')">All Frames</button>
+        <button class="tab" onclick="showTab('export')">Export</button>
+    </div>
+
+    <!-- COMPARE TAB -->
+    <div id="tab-compare" class="panel active">
+        <div class="controls">
+            <label>
+                Baseline:
+                <select id="baseline-select" onchange="updateComparison()">
+                    <option value="walking">Walking (Reference)</option>
+                    <option value="sitdown">Sitdown</option>
+                </select>
+            </label>
+            <label>
+                Compare with:
+                <select id="compare-select" onchange="updateComparison()">
+                    <option value="front">Front</option>
+                    <option value="running">Running</option>
+                    <option value="wave">Wave</option>
+                    <option value="yarn">Yarn</option>
+                    <option value="belly">Belly</option>
+                    <option value="sitdown">Sitdown</option>
+                </select>
+            </label>
+            <label>
+                Frame:
+                <input type="number" id="compare-frame" value="0" min="0" onchange="updateComparison()">
+            </label>
+            <label>
+                <input type="checkbox" id="overlay-mode" onchange="updateComparison()">
+                Overlay Mode
+            </label>
+            <label>
+                Speed:
+                <input type="range" id="anim-speed" min="50" max="500" value="200" onchange="updateAnimSpeed()">
+            </label>
+            <button onclick="playComparison()">Play/Pause</button>
+        </div>
+
+        <div class="comparison-stage" id="comparison-stage">
+            <div class="ground-line"></div>
+            <div class="ground-label">Ground Line</div>
+            <div class="grid-overlay" id="grid-overlay"></div>
+        </div>
+        <div class="controls" style="margin-top:10px;">
+            <label>
+                <input type="checkbox" id="show-grid" onchange="toggleGrid()">
+                Show Grid
+            </label>
+            <label>
+                Grid Size:
+                <input type="number" id="grid-size" value="20" min="5" max="50" onchange="updateGrid()">px
+            </label>
+            <label>
+                <input type="checkbox" id="per-frame-mode" onchange="togglePerFrameMode()">
+                Per-Frame Adjustments
+            </label>
+            <span id="per-frame-indicator" style="color:#f39c12;font-size:11px;display:none;">Editing Frame <span id="current-frame-num">0</span> only</span>
+        </div>
+
+        <div class="adjust-panel">
+            <h3>Adjust: <span id="adjust-sprite-name">front</span></h3>
+
+            <div style="display:flex;gap:30px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:250px;">
+                    <h4 style="color:#3498db;font-size:12px;margin-bottom:10px;">Position & Scale</h4>
+                    <div class="adjust-row">
+                        <label>Y Offset:</label>
+                        <input type="range" id="adj-y" min="-150" max="150" value="0" oninput="applyAdjustment()">
+                        <input type="number" id="adj-y-num" value="0" onchange="syncSlider('y')">
+                        <span class="value">px</span>
+                    </div>
+                    <div class="adjust-row">
+                        <label>X Offset:</label>
+                        <input type="range" id="adj-x" min="-100" max="100" value="0" oninput="applyAdjustment()">
+                        <input type="number" id="adj-x-num" value="0" onchange="syncSlider('x')">
+                        <span class="value">px</span>
+                    </div>
+                    <div class="adjust-row">
+                        <label>Scale:</label>
+                        <input type="range" id="adj-scale" min="50" max="150" value="100" oninput="applyAdjustment()">
+                        <input type="number" id="adj-scale-num" value="100" onchange="syncSlider('scale')">
+                        <span class="value">%</span>
+                    </div>
+                </div>
+
+                <div style="flex:1;min-width:250px;">
+                    <h4 style="color:#e74c3c;font-size:12px;margin-bottom:10px;">Crop (pixels to remove)</h4>
+                    <div class="adjust-row">
+                        <label>Top:</label>
+                        <input type="range" id="adj-crop-top" min="0" max="200" value="0" oninput="applyAdjustment()">
+                        <input type="number" id="adj-crop-top-num" value="0" onchange="syncSlider('crop-top')">
+                        <span class="value">px</span>
+                    </div>
+                    <div class="adjust-row">
+                        <label>Bottom:</label>
+                        <input type="range" id="adj-crop-bottom" min="0" max="200" value="0" oninput="applyAdjustment()">
+                        <input type="number" id="adj-crop-bottom-num" value="0" onchange="syncSlider('crop-bottom')">
+                        <span class="value">px</span>
+                    </div>
+                    <div class="adjust-row">
+                        <label>Left:</label>
+                        <input type="range" id="adj-crop-left" min="0" max="200" value="0" oninput="applyAdjustment()">
+                        <input type="number" id="adj-crop-left-num" value="0" onchange="syncSlider('crop-left')">
+                        <span class="value">px</span>
+                    </div>
+                    <div class="adjust-row">
+                        <label>Right:</label>
+                        <input type="range" id="adj-crop-right" min="0" max="200" value="0" oninput="applyAdjustment()">
+                        <input type="number" id="adj-crop-right-num" value="0" onchange="syncSlider('crop-right')">
+                        <span class="value">px</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="adjust-row" style="margin-top:15px;border-top:1px solid #333;padding-top:15px;">
+                <button class="secondary" onclick="resetAdjustment()">Reset All</button>
+                <button class="primary" onclick="applyToAll()">Save Adjustments</button>
+                <span id="size-info" style="margin-left:auto;font-size:11px;color:#888;"></span>
+            </div>
+        </div>
+
+        <h3 style="margin-top:15px">Animation Frames</h3>
+        <div class="anim-strip" id="compare-strip"></div>
+    </div>
+
+    <!-- GROUPS TAB -->
+    <div id="tab-groups" class="panel">
+        <div class="group movement">
+            <h3>Movement (Walking & Running)</h3>
+            <p style="font-size:12px;color:#888;margin-bottom:10px">These play when cat is moving across screen</p>
+            <div class="preview-row">
+                <div class="preview-box">
+                    <div class="title">Walking</div>
+                    <div class="preview-canvas" id="group-walking"><div class="ground"></div></div>
+                </div>
+                <div class="preview-box">
+                    <div class="title">Running</div>
+                    <div class="preview-canvas" id="group-running"><div class="ground"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="group sitting">
+            <h3>Sitting Activities</h3>
+            <p style="font-size:12px;color:#888;margin-bottom:10px">These play when cat stops to do something cute</p>
+            <div class="preview-row">
+                <div class="preview-box">
+                    <div class="title">Sitdown</div>
+                    <div class="preview-canvas" id="group-sitdown"><div class="ground"></div></div>
+                </div>
+                <div class="preview-box">
+                    <div class="title">Yarn</div>
+                    <div class="preview-canvas" id="group-yarn"><div class="ground"></div></div>
+                </div>
+                <div class="preview-box">
+                    <div class="title">Belly</div>
+                    <div class="preview-canvas" id="group-belly"><div class="ground"></div></div>
+                </div>
+                <div class="preview-box">
+                    <div class="title">Wave</div>
+                    <div class="preview-canvas" id="group-wave"><div class="ground"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="group golden">
+            <h3>Golden Frames (Front-Facing)</h3>
+            <p style="font-size:12px;color:#888;margin-bottom:10px">Special cute moments - cat looks at user. MUST align with sitdown for smooth transitions!</p>
+            <div class="preview-row">
+                <div class="preview-box">
+                    <div class="title">Front</div>
+                    <div class="preview-canvas" id="group-front"><div class="ground"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANSITIONS TAB -->
+    <div id="tab-transitions" class="panel">
+        <h3>Walking → Sitdown → Front (The Problem Transition)</h3>
+        <p style="font-size:12px;color:#888;margin-bottom:15px">This is the transition that should be smooth. Sitdown bridges walking to front.</p>
+
+        <div class="transition-preview">
+            <div class="transition-box">
+                <div class="preview-canvas" id="trans-walking"><div class="ground"></div></div>
+                <div class="label">Walking</div>
+            </div>
+            <div class="transition-arrow">→</div>
+            <div class="transition-box">
+                <div class="preview-canvas" id="trans-sitdown"><div class="ground"></div></div>
+                <div class="label">Sitdown (Bridge)</div>
+            </div>
+            <div class="transition-arrow">→</div>
+            <div class="transition-box">
+                <div class="preview-canvas" id="trans-front"><div class="ground"></div></div>
+                <div class="label">Front (Golden)</div>
+            </div>
+            <div class="transition-arrow">→</div>
+            <div class="transition-box">
+                <div class="preview-canvas" id="trans-sitdown2"><div class="ground"></div></div>
+                <div class="label">Sitdown (Exit)</div>
+            </div>
+            <div class="transition-arrow">→</div>
+            <div class="transition-box">
+                <div class="preview-canvas" id="trans-walking2"><div class="ground"></div></div>
+                <div class="label">Walking</div>
+            </div>
+        </div>
+
+        <div class="controls" style="margin-top:15px">
+            <button class="primary" onclick="playTransition()">Play Full Transition</button>
+            <button onclick="stepTransition(-1)">← Previous</button>
+            <button onclick="stepTransition(1)">Next →</button>
+            <span id="trans-step">Step: 1/5</span>
+        </div>
+
+        <h3 style="margin-top:20px">Other Transitions</h3>
+        <div class="transition-preview" style="margin-top:10px">
+            <div class="transition-box">
+                <div class="preview-canvas" id="trans2-walking"><div class="ground"></div></div>
+                <div class="label">Walking</div>
+            </div>
+            <div class="transition-arrow">→</div>
+            <div class="transition-box">
+                <div class="preview-canvas" id="trans2-running"><div class="ground"></div></div>
+                <div class="label">Running</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ALL FRAMES TAB -->
+    <div id="tab-all" class="panel">
+        <div class="controls">
+            <label>
+                Display Height:
+                <input type="range" id="display-height" min="60" max="200" value="100" oninput="updateAllFrames()">
+                <span id="display-height-val">100px</span>
+            </label>
+        </div>
+
+        <div id="all-frames-container"></div>
+    </div>
+
+    <!-- EXPORT TAB -->
+    <div id="tab-export" class="panel">
+        <div class="controls">
+            <button class="primary" onclick="generateExport()">Generate Python Script</button>
+            <button onclick="copyExport()">Copy to Clipboard</button>
+        </div>
+
+        <div class="export-box">
+            <pre id="export-code">// Click "Generate Python Script" to create adjustment code</pre>
+        </div>
+    </div>
+
+    <script>
+        const ASSETS_PATH = 'Sources/CatOnScreen/Resources/Assets/';
+
+        const SPRITES = {
+            walking: { prefix: 'cat_walking', count: 7, yOffset: 0, xOffset: 0, scale: 1.0, cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0 },
+            running: { prefix: 'cat_running', count: 8, yOffset: 0, xOffset: 0, scale: 1.0, cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0 },
+            front: { prefix: 'cat_front', count: 8, yOffset: 0, xOffset: 0, scale: 1.0, cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0 },
+            sitdown: { prefix: 'cat_sitdown', count: 8, yOffset: 0, xOffset: 0, scale: 1.0, cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0 },
+            wave: { prefix: 'cat_wave', count: 8, yOffset: 0, xOffset: 0, scale: 1.0, cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0 },
+            yarn: { prefix: 'cat_yarn', count: 4, yOffset: 0, xOffset: 0, scale: 1.0, cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0 },
+            belly: { prefix: 'cat_belly', count: 4, yOffset: 0, xOffset: 0, scale: 1.0, cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0 },
+        };
+
+        let frames = {};
+        let currentFrame = {};
+        let animInterval = null;
+        let isPlaying = true;
+        let transitionStep = 0;
+        let perFrameMode = false;
+        let perFrameAdjustments = {};  // { "front_0": { yOffset, xOffset, scale, cropTop... }, ... }
+
+        // Tab switching
+        function showTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');
+            document.getElementById(`tab-${name}`).classList.add('active');
+        }
+
+        // Load sprites
+        async function loadSprites() {
+            for (const [name, config] of Object.entries(SPRITES)) {
+                frames[name] = [];
+                currentFrame[name] = 0;
+
+                for (let i = 0; i < config.count; i++) {
+                    const img = new Image();
+                    img.src = `${ASSETS_PATH}${config.prefix}_${i}.png`;
+                    await new Promise(r => { img.onload = r; img.onerror = r; });
+                    if (img.complete && img.naturalHeight > 0) {
+                        frames[name].push(img);
+                    }
+                }
+            }
+
+            updateComparison();
+            updateAllFrames();
+            startAnimation();
+        }
+
+        // Animation
+        function startAnimation() {
+            const speed = parseInt(document.getElementById('anim-speed').value);
+            if (animInterval) clearInterval(animInterval);
+
+            animInterval = setInterval(() => {
+                if (!isPlaying) return;
+
+                for (const name of Object.keys(frames)) {
+                    if (frames[name].length > 0) {
+                        currentFrame[name] = (currentFrame[name] + 1) % frames[name].length;
+                    }
+                }
+
+                updateAllPreviews();
+            }, speed);
+        }
+
+        function updateAnimSpeed() {
+            startAnimation();
+        }
+
+        function playComparison() {
+            isPlaying = !isPlaying;
+        }
+
+        // Update all preview canvases
+        function updateAllPreviews() {
+            // Group previews
+            for (const name of Object.keys(frames)) {
+                updatePreviewCanvas(`group-${name}`, name);
+            }
+
+            // Transition previews
+            updatePreviewCanvas('trans-walking', 'walking');
+            updatePreviewCanvas('trans-sitdown', 'sitdown');
+            updatePreviewCanvas('trans-front', 'front');
+            updatePreviewCanvas('trans-sitdown2', 'sitdown');
+            updatePreviewCanvas('trans-walking2', 'walking');
+            updatePreviewCanvas('trans2-walking', 'walking');
+            updatePreviewCanvas('trans2-running', 'running');
+
+            // Comparison
+            updateComparison();
+        }
+
+        function updatePreviewCanvas(canvasId, spriteName) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !frames[spriteName] || frames[spriteName].length === 0) return;
+
+            const config = SPRITES[spriteName];
+            const frameIdx = currentFrame[spriteName];
+            const img = frames[spriteName][frameIdx];
+
+            // Clear old
+            const oldImg = canvas.querySelector('img');
+            if (oldImg) oldImg.remove();
+
+            // Scale to fit
+            const cw = 140, ch = 110;
+            const scale = Math.min(cw / img.naturalWidth, ch / img.naturalHeight) * config.scale;
+
+            const newImg = img.cloneNode();
+            newImg.style.width = (img.naturalWidth * scale) + 'px';
+            newImg.style.height = (img.naturalHeight * scale) + 'px';
+            newImg.style.bottom = config.yOffset + 'px';
+
+            canvas.appendChild(newImg);
+        }
+
+        // Comparison view
+        function updateComparison() {
+            const baseline = document.getElementById('baseline-select').value;
+            const compare = document.getElementById('compare-select').value;
+            const frameIdx = parseInt(document.getElementById('compare-frame').value) || 0;
+            const overlay = document.getElementById('overlay-mode').checked;
+
+            const stage = document.getElementById('comparison-stage');
+            stage.className = 'comparison-stage' + (overlay ? ' overlay-mode' : '');
+
+            // Clear old items (keep ground line and grid)
+            stage.querySelectorAll('.compare-item').forEach(el => el.remove());
+
+            // Add baseline
+            if (frames[baseline] && frames[baseline].length > 0) {
+                const bFrameIdx = frameIdx % frames[baseline].length;
+                const bFrame = frames[baseline][bFrameIdx];
+                const bConfig = getAdjustmentConfig(baseline, bFrameIdx);
+                stage.appendChild(createCompareItem(bFrame, bConfig, baseline, true, bFrameIdx));
+            }
+
+            // Add compare
+            if (frames[compare] && frames[compare].length > 0) {
+                const cFrameIdx = frameIdx % frames[compare].length;
+                const cFrame = frames[compare][cFrameIdx];
+                const cConfig = getAdjustmentConfig(compare, cFrameIdx);
+                stage.appendChild(createCompareItem(cFrame, cConfig, compare, false, cFrameIdx));
+            }
+
+            // Update strip
+            updateCompareStrip(compare, frameIdx);
+
+            // Update per-frame indicator
+            if (perFrameMode) {
+                updatePerFrameIndicator();
+            }
+
+            // Update adjust panel - use per-frame config if enabled
+            const cFrameIdx = frameIdx % (frames[compare]?.length || 1);
+            const cfg = getAdjustmentConfig(compare, cFrameIdx);
+            document.getElementById('adjust-sprite-name').textContent = perFrameMode ? `${compare} (Frame ${cFrameIdx})` : compare;
+            document.getElementById('adj-y').value = cfg.yOffset;
+            document.getElementById('adj-y-num').value = cfg.yOffset;
+            document.getElementById('adj-x').value = cfg.xOffset || 0;
+            document.getElementById('adj-x-num').value = cfg.xOffset || 0;
+            document.getElementById('adj-scale').value = cfg.scale * 100;
+            document.getElementById('adj-scale-num').value = Math.round(cfg.scale * 100);
+            document.getElementById('adj-crop-top').value = cfg.cropTop || 0;
+            document.getElementById('adj-crop-top-num').value = cfg.cropTop || 0;
+            document.getElementById('adj-crop-bottom').value = cfg.cropBottom || 0;
+            document.getElementById('adj-crop-bottom-num').value = cfg.cropBottom || 0;
+            document.getElementById('adj-crop-left').value = cfg.cropLeft || 0;
+            document.getElementById('adj-crop-left-num').value = cfg.cropLeft || 0;
+            document.getElementById('adj-crop-right').value = cfg.cropRight || 0;
+            document.getElementById('adj-crop-right-num').value = cfg.cropRight || 0;
+
+            // Update size info
+            if (frames[compare] && frames[compare].length > 0) {
+                const img = frames[compare][cFrameIdx];
+                const newW = img.naturalWidth - (cfg.cropLeft || 0) - (cfg.cropRight || 0);
+                const newH = img.naturalHeight - (cfg.cropTop || 0) - (cfg.cropBottom || 0);
+                document.getElementById('size-info').textContent = `Original: ${img.naturalWidth}x${img.naturalHeight} → After crop: ${newW}x${newH}`;
+            }
+        }
+
+        function createCompareItem(img, config, name, isBaseline, frameIdx) {
+            const div = document.createElement('div');
+            div.className = 'compare-item';
+
+            // Calculate cropped dimensions
+            const cropT = config.cropTop || 0;
+            const cropB = config.cropBottom || 0;
+            const cropL = config.cropLeft || 0;
+            const cropR = config.cropRight || 0;
+            const croppedW = img.naturalWidth - cropL - cropR;
+            const croppedH = img.naturalHeight - cropT - cropB;
+
+            const scale = 0.8 * config.scale; // Display scale
+
+            // Create a container for the cropped image
+            const container = document.createElement('div');
+            container.style.width = (croppedW * scale) + 'px';
+            container.style.height = (croppedH * scale) + 'px';
+            container.style.overflow = 'hidden';
+            container.style.position = 'relative';
+            container.style.marginBottom = config.yOffset + 'px';
+            container.style.marginLeft = (config.xOffset || 0) + 'px';
+
+            const imgEl = img.cloneNode();
+            imgEl.style.width = (img.naturalWidth * scale) + 'px';
+            imgEl.style.height = (img.naturalHeight * scale) + 'px';
+            imgEl.style.position = 'absolute';
+            imgEl.style.left = (-cropL * scale) + 'px';
+            imgEl.style.top = (-cropT * scale) + 'px';
+
+            container.appendChild(imgEl);
+            div.appendChild(container);
+
+            const label = document.createElement('div');
+            label.className = 'label ' + (isBaseline ? 'baseline' : 'adjusting');
+            const cropInfo = (cropT || cropB || cropL || cropR) ? ` | Crop:${cropT},${cropR},${cropB},${cropL}` : '';
+            label.innerHTML = `${name.toUpperCase()} F${frameIdx}<br>
+                <span class="info">${croppedW}x${croppedH} | Y:${config.yOffset} X:${config.xOffset||0} | S:${Math.round(config.scale*100)}%${cropInfo}</span>`;
+            div.appendChild(label);
+
+            return div;
+        }
+
+        function updateCompareStrip(spriteName, currentIdx) {
+            const strip = document.getElementById('compare-strip');
+            strip.innerHTML = '';
+
+            if (!frames[spriteName]) return;
+
+            frames[spriteName].forEach((img, i) => {
+                const frame = document.createElement('div');
+                frame.className = 'frame' + (i === currentIdx % frames[spriteName].length ? ' current' : '');
+                frame.onclick = () => {
+                    document.getElementById('compare-frame').value = i;
+                    updateComparison();
+                };
+
+                const imgEl = img.cloneNode();
+                frame.appendChild(imgEl);
+
+                const idx = document.createElement('div');
+                idx.className = 'idx';
+                idx.textContent = `F${i}`;
+                frame.appendChild(idx);
+
+                strip.appendChild(frame);
+            });
+        }
+
+        // Adjustments
+        function applyAdjustment() {
+            const compare = document.getElementById('compare-select').value;
+            const y = parseInt(document.getElementById('adj-y').value) || 0;
+            const x = parseInt(document.getElementById('adj-x').value) || 0;
+            const scale = parseInt(document.getElementById('adj-scale').value) / 100;
+            const cropTop = parseInt(document.getElementById('adj-crop-top').value) || 0;
+            const cropBottom = parseInt(document.getElementById('adj-crop-bottom').value) || 0;
+            const cropLeft = parseInt(document.getElementById('adj-crop-left').value) || 0;
+            const cropRight = parseInt(document.getElementById('adj-crop-right').value) || 0;
+
+            SPRITES[compare].yOffset = y;
+            SPRITES[compare].xOffset = x;
+            SPRITES[compare].scale = scale;
+            SPRITES[compare].cropTop = cropTop;
+            SPRITES[compare].cropBottom = cropBottom;
+            SPRITES[compare].cropLeft = cropLeft;
+            SPRITES[compare].cropRight = cropRight;
+
+            // Sync number inputs
+            document.getElementById('adj-y-num').value = y;
+            document.getElementById('adj-x-num').value = x;
+            document.getElementById('adj-scale-num').value = Math.round(scale * 100);
+            document.getElementById('adj-crop-top-num').value = cropTop;
+            document.getElementById('adj-crop-bottom-num').value = cropBottom;
+            document.getElementById('adj-crop-left-num').value = cropLeft;
+            document.getElementById('adj-crop-right-num').value = cropRight;
+
+            // Show size info
+            if (frames[compare] && frames[compare].length > 0) {
+                const img = frames[compare][0];
+                const newW = img.naturalWidth - cropLeft - cropRight;
+                const newH = img.naturalHeight - cropTop - cropBottom;
+                document.getElementById('size-info').textContent = `Original: ${img.naturalWidth}x${img.naturalHeight} → After crop: ${newW}x${newH}`;
+            }
+
+            updateComparison();
+        }
+
+        function syncSlider(type) {
+            const mapping = {
+                'y': 'adj-y',
+                'x': 'adj-x',
+                'scale': 'adj-scale',
+                'crop-top': 'adj-crop-top',
+                'crop-bottom': 'adj-crop-bottom',
+                'crop-left': 'adj-crop-left',
+                'crop-right': 'adj-crop-right'
+            };
+            if (mapping[type]) {
+                document.getElementById(mapping[type]).value = document.getElementById(mapping[type] + '-num').value;
+            }
+            applyAdjustment();
+        }
+
+        function resetAdjustment() {
+            const compare = document.getElementById('compare-select').value;
+            SPRITES[compare].yOffset = 0;
+            SPRITES[compare].xOffset = 0;
+            SPRITES[compare].scale = 1.0;
+            SPRITES[compare].cropTop = 0;
+            SPRITES[compare].cropBottom = 0;
+            SPRITES[compare].cropLeft = 0;
+            SPRITES[compare].cropRight = 0;
+            updateComparison();
+        }
+
+        function applyToAll() {
+            alert('Adjustment saved! Go to Export tab to generate the Python script.');
+        }
+
+        // Grid functions
+        function toggleGrid() {
+            const show = document.getElementById('show-grid').checked;
+            const grid = document.getElementById('grid-overlay');
+            if (show) {
+                grid.classList.add('visible');
+                grid.innerHTML = '<div class="center-line-v"></div><div class="center-line-h"></div>';
+            } else {
+                grid.classList.remove('visible');
+            }
+        }
+
+        function updateGrid() {
+            const size = parseInt(document.getElementById('grid-size').value) || 20;
+            const grid = document.getElementById('grid-overlay');
+            grid.style.backgroundSize = `${size}px ${size}px`;
+        }
+
+        // Per-frame mode
+        function togglePerFrameMode() {
+            perFrameMode = document.getElementById('per-frame-mode').checked;
+            const indicator = document.getElementById('per-frame-indicator');
+            const panel = document.querySelector('.adjust-panel');
+
+            if (perFrameMode) {
+                indicator.style.display = 'inline';
+                panel.parentElement.classList.add('per-frame-active');
+                updatePerFrameIndicator();
+            } else {
+                indicator.style.display = 'none';
+                panel.parentElement.classList.remove('per-frame-active');
+            }
+            updateComparison();
+        }
+
+        function updatePerFrameIndicator() {
+            const frameIdx = parseInt(document.getElementById('compare-frame').value) || 0;
+            document.getElementById('current-frame-num').textContent = frameIdx;
+        }
+
+        function getAdjustmentConfig(spriteName, frameIdx) {
+            if (perFrameMode) {
+                const key = `${spriteName}_${frameIdx}`;
+                if (!perFrameAdjustments[key]) {
+                    // Initialize from sprite defaults
+                    perFrameAdjustments[key] = { ...SPRITES[spriteName] };
+                }
+                return perFrameAdjustments[key];
+            }
+            return SPRITES[spriteName];
+        }
+
+        function setAdjustmentConfig(spriteName, frameIdx, config) {
+            if (perFrameMode) {
+                const key = `${spriteName}_${frameIdx}`;
+                perFrameAdjustments[key] = config;
+            } else {
+                Object.assign(SPRITES[spriteName], config);
+            }
+        }
+
+        // Transitions
+        function playTransition() {
+            transitionStep = 0;
+            const steps = ['walking', 'sitdown', 'front', 'sitdown', 'walking'];
+            let i = 0;
+
+            const interval = setInterval(() => {
+                // Highlight current step
+                document.querySelectorAll('.transition-box').forEach((box, idx) => {
+                    box.style.opacity = idx === i ? '1' : '0.4';
+                });
+                document.getElementById('trans-step').textContent = `Step: ${i+1}/5`;
+
+                i++;
+                if (i >= 5) {
+                    clearInterval(interval);
+                    document.querySelectorAll('.transition-box').forEach(box => box.style.opacity = '1');
+                }
+            }, 600);
+        }
+
+        function stepTransition(dir) {
+            transitionStep = Math.max(0, Math.min(4, transitionStep + dir));
+            document.querySelectorAll('.transition-box').forEach((box, idx) => {
+                box.style.opacity = idx === transitionStep ? '1' : '0.4';
+            });
+            document.getElementById('trans-step').textContent = `Step: ${transitionStep+1}/5`;
+        }
+
+        // All frames view
+        function updateAllFrames() {
+            const container = document.getElementById('all-frames-container');
+            const height = parseInt(document.getElementById('display-height').value);
+            document.getElementById('display-height-val').textContent = height + 'px';
+
+            container.innerHTML = '';
+
+            for (const [name, config] of Object.entries(SPRITES)) {
+                if (!frames[name] || frames[name].length === 0) continue;
+
+                const section = document.createElement('div');
+                section.className = 'group';
+                section.innerHTML = `<h3>${name.toUpperCase()} (${frames[name].length} frames) - Y:${config.yOffset} Scale:${Math.round(config.scale*100)}%</h3>`;
+
+                const strip = document.createElement('div');
+                strip.className = 'anim-strip';
+
+                frames[name].forEach((img, i) => {
+                    const frame = document.createElement('div');
+                    frame.className = 'frame';
+
+                    const imgEl = img.cloneNode();
+                    imgEl.style.maxHeight = height + 'px';
+                    frame.appendChild(imgEl);
+
+                    const info = document.createElement('div');
+                    info.className = 'idx';
+                    info.textContent = `F${i} ${img.naturalWidth}x${img.naturalHeight}`;
+                    frame.appendChild(info);
+
+                    strip.appendChild(frame);
+                });
+
+                section.appendChild(strip);
+                container.appendChild(section);
+            }
+        }
+
+        // Export
+        function generateExport() {
+            let code = `#!/usr/bin/env python3
+"""
+Sprite Adjustment Script
+Generated from Sprite Alignment Tool
+Apply these adjustments to fix sprite positioning
+"""
+
+from PIL import Image
+import os
+
+ASSETS_DIR = "Sources/CatOnScreen/Resources/Assets"
+
+# Adjustment values from tool
+ADJUSTMENTS = {
+`;
+            for (const [name, config] of Object.entries(SPRITES)) {
+                code += `    "${name}": {"yOffset": ${config.yOffset}, "scale": ${config.scale.toFixed(2)}, "prefix": "${config.prefix}", "count": ${config.count}},\n`;
+            }
+
+            code += `}
+
+def apply_adjustments():
+    for sprite_name, adj in ADJUSTMENTS.items():
+        if adj["yOffset"] == 0 and adj["scale"] == 1.0:
+            continue  # No adjustment needed
+
+        print(f"\\nProcessing {sprite_name}...")
+
+        for i in range(adj["count"]):
+            filename = f'{ASSETS_DIR}/{adj["prefix"]}_{i}.png'
+            if not os.path.exists(filename):
+                continue
+
+            img = Image.open(filename).convert('RGBA')
+            original_size = img.size
+
+            # Apply scale if not 1.0
+            if adj["scale"] != 1.0:
+                new_w = int(img.width * adj["scale"])
+                new_h = int(img.height * adj["scale"])
+                img = img.resize((new_w, new_h), Image.LANCZOS)
+                print(f"  {i}: Scaled {original_size} -> {img.size}")
+
+            # Apply Y offset (positive = shift content UP = paste higher on canvas)
+            if adj["yOffset"] != 0:
+                canvas = Image.new('RGBA', img.size, (0, 0, 0, 0))
+                # yOffset > 0 means content should appear higher, so paste at negative y
+                paste_y = -adj["yOffset"]
+                canvas.paste(img, (0, paste_y), img)
+                img = canvas
+                print(f"  {i}: Y offset {adj['yOffset']}px")
+
+            img.save(filename)
+
+    print("\\n✅ Done! Adjustments applied.")
+
+if __name__ == "__main__":
+    apply_adjustments()
+`;
+
+            document.getElementById('export-code').textContent = code;
+        }
+
+        function copyExport() {
+            const code = document.getElementById('export-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Copied to clipboard!');
+            });
+        }
+
+        // Initialize
+        loadSprites();
+    </script>
+</body>
+</html>
