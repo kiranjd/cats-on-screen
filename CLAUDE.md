@@ -1,130 +1,102 @@
-# Cats on Screen
+# CLAUDE.md
 
-**Desktop cat that walks on your windows. Native Swift. One-time purchase. Ships fast.**
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## The Pitch
+## What This Is
 
-Docko charges $10/mo for a dock pet. CozyPet is pixel art fluff. DeskPet is free garbage.
+Desktop cat that walks on your windows. Native Swift. One-time purchase. Ships fast.
 
-We're building the premium native Mac cat that:
-- Walks ON TOP of your actual windows (not just wallpaper)
-- Costs $5 once, forever
-- Uses <0.5% CPU (not Electron trash)
-- Zero tracking, zero cloud, zero bullshit
-
-## Current State
-
-Working prototype:
-- 8-frame walk cycle
-- Pet/scratch/feed interactions
-- Walks above dock
-
-## Ship Order (DO THIS)
-
-### Phase 1: MVP (THIS WEEK)
-
-1. **Window walking** - Cat walks on window title bars
-   - `CGWindowListCopyWindowInfo` to get window rects
-   - Cat pathfinds across visible windows
-   - Jumps gaps between windows
-
-2. **Menu bar app** - Proper Mac citizen
-   - Menu bar icon (cat face)
-   - Quit, Preferences, Hide Cat
-   - Launch at login toggle
-
-3. **Click-through fix** - Don't block user clicks
-   - `ignoresMouseEvents = true` except on cat sprite
-   - Only intercept when mouse directly over cat
-
-4. **3 cat breeds** - Ship variety
-   - Tabby (current)
-   - Black cat
-   - Orange cat
-   - Same animations, palette swap
-
-### Phase 2: Polish (NEXT WEEK)
-
-5. **Idle mood** - Cat gets sleepy
-   - Track `CGEventSource.secondsSinceLastEventType`
-   - 5min idle → cat naps
-   - User returns → cat wakes, stretches
-
-6. **Sound effects** - Optional, muted default
-   - Purr on pet
-   - Meow on feed
-   - Prefs toggle
-
-7. **Do Not Disturb** - Respect Focus modes
-   - Cat hides during Focus
-   - Returns when Focus ends
-
-### Phase 3: Multiplier (WEEK 3)
-
-8. **Multi-cat** - 2-5 cats
-   - Simple flocking behavior
-   - Cats interact (chase, nap together)
-
-9. **Window jump physics** - Cat leaps between windows
-   - Arc trajectory
-   - Landing animation
-
-## Tech Stack
-
-```
-/Sources/CatOnScreen/
-├── main.swift           # Entry point
-├── AppDelegate.swift    # Menu bar, lifecycle
-├── CatWindow.swift      # Overlay window
-├── CatScene.swift       # SpriteKit scene
-├── CatNode.swift        # Cat sprite + animations
-├── WindowDetector.swift # CGWindowList integration
-└── Resources/Assets/    # Textures
-```
+Differentiators vs competitors (Docko, CozyPet, DeskPet):
+- Walks ON TOP of actual windows (not just wallpaper)
+- $5 once, forever (no subscription)
+- <0.5% CPU (native, not Electron)
+- Zero tracking, zero cloud
 
 ## Commands
 
 ```bash
-# Build and run
-cd ~/things/cats-on-screen
+# Build and run (development)
 swift build && swift run
 
-# Build release
+# Build release + create .app bundle
+./build.sh
+# Then: open CatOnScreen.app
+
+# Build release only
 swift build -c release
 ```
 
-## Art Assets Needed
+## Architecture
+
+### Rendering Stack
+```
+CatApp.swift → AppDelegate → OverlayWindow → SKView → CatScene → CatNode
+```
+
+- **OverlayWindow** (`NSPanel`): Transparent fullscreen overlay that floats above all windows. Uses `ignoresMouseEvents` dynamically—clicks pass through except when mouse is directly over the cat.
+- **CatScene** (`SKScene`): SpriteKit scene with transparent background. Updates cat position at 60fps, handles click-through toggle.
+- **CatNode** (`SKSpriteNode`): The cat sprite. Manages state machine (walking/idle/jumping/sleeping/interacting), texture animations, and movement physics.
+
+### Window Detection
+**WindowDetector** (singleton): Polls `CGWindowListCopyWindowInfo` every 500ms to get window rects. Handles coordinate conversion between CGWindow (origin top-left, Y down) and SpriteKit (origin bottom-left, Y up).
+
+Key methods:
+- `getWalkableSurfaces()` → cached list of window top edges
+- `findSurfaceBelow(point:)` → find window to walk on
+- `findNextSurface(from:currentY:direction:)` → gap detection for jumping
+
+### Cat State Machine
+```
+walking → idle (via tap)
+walking → jumping (edge detected)
+walking → sleeping (5min system idle)
+jumping → walking (landed)
+sleeping → walking (user activity)
+idle → interacting (menu selection)
+interacting → walking (action complete)
+```
+
+### Click-Through Behavior
+In `CatScene.updateWindowClickThrough()`:
+- Every frame: check if mouse is over cat sprite
+- Over cat: `ignoresMouseEvents = false` (cat is clickable)
+- Not over cat: `ignoresMouseEvents = true` (clicks pass to windows below)
+
+## Asset Files
 
 Located in `Sources/CatOnScreen/Resources/Assets/`:
 
 | Asset | Status |
 |-------|--------|
-| cat_walking_0-7.png | Done |
+| cat_walking_0-6.png | Done (7 frames) |
 | cat_sitting.png | Done |
 | cat_being_petted.png | Done |
 | cat_scratching.png | Done |
 | cat_eating.png | Done |
-| cat_sleeping.png | TODO |
-| cat_jumping.png | TODO |
-| cat_landing.png | TODO |
+| cat_sleeping.png | Done |
+| cat_jumping.png | Done |
 | menubar_icon.png | TODO |
 | cat_black_*.png | TODO |
 | cat_orange_*.png | TODO |
 
-## Pricing
+## Ship Order
 
-- **$4.99** one-time on Mac App Store
-- 7-day free trial
-- No IAP, no subscription, no bullshit
+### Phase 1: MVP
+1. Window walking (done - cat pathfinds across window title bars)
+2. Menu bar app (TODO)
+3. Click-through fix (done)
+4. 3 cat breeds (TODO - palette swaps)
 
-## Launch Plan
+### Phase 2: Polish
+5. Idle mood (done - sleeps after 5min idle)
+6. Sound effects (TODO)
+7. Do Not Disturb awareness (TODO)
 
-1. Ship MVP to TestFlight
-2. Post on r/MacApps with video
-3. Product Hunt launch
-4. Done
+### Phase 3: Multiplier
+8. Multi-cat (2-5 cats with flocking)
+9. Window jump physics (done - arc trajectory)
 
-## Rules for Claude
+## Rules
 
 - **Ship > Perfect** - Working code beats planning
 - **Native only** - No web views, no Electron patterns

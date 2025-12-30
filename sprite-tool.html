@@ -84,12 +84,12 @@
             background: #0a0a1a;
             border-radius: 8px;
             padding: 20px;
-            min-height: 200px;
+            min-height: 500px;
             position: relative;
             display: flex;
             justify-content: center;
             align-items: flex-end;
-            gap: 30px;
+            gap: 50px;
         }
         .ground-line {
             position: absolute;
@@ -98,6 +98,7 @@
             right: 20px;
             height: 2px;
             background: #e74c3c;
+            z-index: 10;
         }
         .ground-label {
             position: absolute;
@@ -105,6 +106,59 @@
             right: 25px;
             font-size: 10px;
             color: #e74c3c;
+            z-index: 10;
+        }
+
+        /* Individual grid inside each sprite frame */
+        .sprite-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100; /* On top of image */
+            background-image:
+                linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .sprite-grid.hidden { display: none; }
+        .sprite-grid .center-v {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #00ff00;
+            box-shadow: 0 0 6px #00ff00;
+        }
+        .sprite-grid .center-h {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #00ff00;
+            box-shadow: 0 0 6px #00ff00;
+        }
+        /* Green tint for baseline grid */
+        .baseline-item .sprite-grid {
+            background-color: rgba(39, 174, 96, 0.05);
+        }
+        .baseline-item .sprite-grid .center-v,
+        .baseline-item .sprite-grid .center-h {
+            background: #00ff00;
+            box-shadow: 0 0 6px #00ff00;
+        }
+        /* Orange tint for editing grid */
+        .adjusting-item .sprite-grid {
+            background-color: rgba(243, 156, 18, 0.05);
+        }
+        .adjusting-item .sprite-grid .center-v,
+        .adjusting-item .sprite-grid .center-h {
+            background: #00ff00;
+            box-shadow: 0 0 6px #00ff00;
         }
 
         .compare-item {
@@ -130,8 +184,52 @@
             color: #666;
         }
 
-        /* Sprite grid */
-        .sprite-grid {
+        /* Baseline frame - clearly fixed/locked appearance */
+        .compare-item.baseline-item {
+            background: rgba(39, 174, 96, 0.1);
+            border: 2px solid #27ae60;
+            border-radius: 8px;
+            padding: 10px;
+            position: relative;
+        }
+        .compare-item.baseline-item::before {
+            content: '🔒 BASELINE (Fixed)';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #27ae60;
+            background: #1a1a2e;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        /* Adjusting frame - editable appearance */
+        .compare-item.adjusting-item {
+            background: rgba(243, 156, 18, 0.1);
+            border: 2px dashed #f39c12;
+            border-radius: 8px;
+            padding: 10px;
+            position: relative;
+        }
+        .compare-item.adjusting-item::before {
+            content: '✏️ EDITING';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #f39c12;
+            background: #1a1a2e;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        /* Sprite cell grid (for All Frames tab) - NOT the overlay grid */
+        .sprite-cells-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             gap: 10px;
@@ -374,6 +472,7 @@
                 Baseline:
                 <select id="baseline-select" onchange="updateComparison()">
                     <option value="walking">Walking (Reference)</option>
+                    <option value="front">Front (F0 Reference)</option>
                     <option value="sitdown">Sitdown</option>
                 </select>
             </label>
@@ -406,11 +505,10 @@
         <div class="comparison-stage" id="comparison-stage">
             <div class="ground-line"></div>
             <div class="ground-label">Ground Line</div>
-            <div class="grid-overlay" id="grid-overlay"></div>
         </div>
         <div class="controls" style="margin-top:10px;">
             <label>
-                <input type="checkbox" id="show-grid" onchange="toggleGrid()">
+                <input type="checkbox" id="show-grid" checked onchange="toggleGrid()">
                 Show Grid
             </label>
             <label>
@@ -480,9 +578,21 @@
             </div>
 
             <div class="adjust-row" style="margin-top:15px;border-top:1px solid #333;padding-top:15px;">
-                <button class="secondary" onclick="resetAdjustment()">Reset All</button>
-                <button class="primary" onclick="applyToAll()">Save Adjustments</button>
+                <button class="secondary" onclick="resetAdjustment()">Reset This</button>
+                <button class="primary" onclick="saveCurrentAdjustment()">Save & Continue</button>
                 <span id="size-info" style="margin-left:auto;font-size:11px;color:#888;"></span>
+            </div>
+        </div>
+
+        <!-- Adjustments Summary Panel -->
+        <div class="adjust-panel" style="margin-top:15px;background:#1a2a1a;">
+            <h3 style="color:#27ae60;">Saved Adjustments Summary</h3>
+            <div id="adjustments-summary" style="font-size:12px;color:#888;margin-top:10px;">
+                No adjustments saved yet. Make changes and click "Save & Continue".
+            </div>
+            <div style="margin-top:10px;">
+                <button class="secondary" onclick="clearAllAdjustments()">Clear All</button>
+                <span style="margin-left:15px;font-size:11px;color:#666;">Go to Export tab when done to generate script</span>
             </div>
         </div>
 
@@ -755,7 +865,8 @@
 
             // Add baseline
             if (frames[baseline] && frames[baseline].length > 0) {
-                const bFrameIdx = frameIdx % frames[baseline].length;
+                // When using "Front (F0 Reference)", always show frame 0 as baseline
+                const bFrameIdx = (baseline === 'front') ? 0 : (frameIdx % frames[baseline].length);
                 const bFrame = frames[baseline][bFrameIdx];
                 const bConfig = getAdjustmentConfig(baseline, bFrameIdx);
                 stage.appendChild(createCompareItem(bFrame, bConfig, baseline, true, bFrameIdx));
@@ -807,43 +918,91 @@
 
         function createCompareItem(img, config, name, isBaseline, frameIdx) {
             const div = document.createElement('div');
-            div.className = 'compare-item';
+            div.className = 'compare-item ' + (isBaseline ? 'baseline-item' : 'adjusting-item');
 
-            // Calculate cropped dimensions
-            const cropT = config.cropTop || 0;
-            const cropB = config.cropBottom || 0;
-            const cropL = config.cropLeft || 0;
-            const cropR = config.cropRight || 0;
-            const croppedW = img.naturalWidth - cropL - cropR;
-            const croppedH = img.naturalHeight - cropT - cropB;
+            const displayScale = 0.5;
+            const showGrid = document.getElementById('show-grid').checked;
+            const gridSize = parseInt(document.getElementById('grid-size').value) || 20;
 
-            const scale = 0.8 * config.scale; // Display scale
+            // FIXED container size - same for both baseline and editing
+            const containerW = img.naturalWidth * displayScale;
+            const containerH = img.naturalHeight * displayScale;
 
-            // Create a container for the cropped image
+            // Fixed container - grid lives here, never moves
             const container = document.createElement('div');
-            container.style.width = (croppedW * scale) + 'px';
-            container.style.height = (croppedH * scale) + 'px';
-            container.style.overflow = 'hidden';
+            container.style.width = containerW + 'px';
+            container.style.height = containerH + 'px';
             container.style.position = 'relative';
-            container.style.marginBottom = config.yOffset + 'px';
-            container.style.marginLeft = (config.xOffset || 0) + 'px';
+            container.style.overflow = 'visible'; // Allow image to overflow when offset
+            container.style.marginBottom = '30px';
 
-            const imgEl = img.cloneNode();
-            imgEl.style.width = (img.naturalWidth * scale) + 'px';
-            imgEl.style.height = (img.naturalHeight * scale) + 'px';
-            imgEl.style.position = 'absolute';
-            imgEl.style.left = (-cropL * scale) + 'px';
-            imgEl.style.top = (-cropT * scale) + 'px';
+            // Grid overlay - FIXED to container, never moves
+            const grid = document.createElement('div');
+            grid.className = 'sprite-grid' + (showGrid ? '' : ' hidden');
+            grid.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            grid.innerHTML = '<div class="center-v"></div><div class="center-h"></div>';
+            container.appendChild(grid);
 
-            container.appendChild(imgEl);
-            div.appendChild(container);
+            if (isBaseline) {
+                // BASELINE: Image at origin (0,0), no adjustments
+                const imgEl = img.cloneNode();
+                imgEl.style.width = containerW + 'px';
+                imgEl.style.height = containerH + 'px';
+                imgEl.style.position = 'absolute';
+                imgEl.style.left = '0';
+                imgEl.style.top = '0';
+                container.appendChild(imgEl);
 
-            const label = document.createElement('div');
-            label.className = 'label ' + (isBaseline ? 'baseline' : 'adjusting');
-            const cropInfo = (cropT || cropB || cropL || cropR) ? ` | Crop:${cropT},${cropR},${cropB},${cropL}` : '';
-            label.innerHTML = `${name.toUpperCase()} F${frameIdx}<br>
-                <span class="info">${croppedW}x${croppedH} | Y:${config.yOffset} X:${config.xOffset||0} | S:${Math.round(config.scale*100)}%${cropInfo}</span>`;
-            div.appendChild(label);
+                div.appendChild(container);
+
+                const label = document.createElement('div');
+                label.className = 'label baseline';
+                label.innerHTML = `${name.toUpperCase()} F${frameIdx}<br>
+                    <span class="info">${img.naturalWidth}x${img.naturalHeight} (Fixed Reference)</span>`;
+                div.appendChild(label);
+            } else {
+                // EDITING: Image moves based on offset, scale, crop
+                const cropT = config.cropTop || 0;
+                const cropB = config.cropBottom || 0;
+                const cropL = config.cropLeft || 0;
+                const cropR = config.cropRight || 0;
+                const yOffset = config.yOffset || 0;
+                const xOffset = config.xOffset || 0;
+                const scale = config.scale || 1.0;
+
+                const scaledW = img.naturalWidth * displayScale * scale;
+                const scaledH = img.naturalHeight * displayScale * scale;
+
+                // Image moves within the fixed container
+                // Y offset: positive = move UP (negative top value)
+                // X offset: positive = move RIGHT (positive left value)
+                const imgEl = img.cloneNode();
+                imgEl.style.width = scaledW + 'px';
+                imgEl.style.height = scaledH + 'px';
+                imgEl.style.position = 'absolute';
+                imgEl.style.left = (xOffset * displayScale) + 'px';
+                imgEl.style.bottom = (yOffset * displayScale) + 'px'; // Use bottom for Y offset
+                imgEl.style.top = 'auto';
+
+                // Apply crop via clip-path
+                if (cropT || cropB || cropL || cropR) {
+                    const clipT = (cropT * displayScale * scale) + 'px';
+                    const clipR = (scaledW - cropR * displayScale * scale) + 'px';
+                    const clipB = (scaledH - cropB * displayScale * scale) + 'px';
+                    const clipL = (cropL * displayScale * scale) + 'px';
+                    imgEl.style.clipPath = `inset(${clipT} ${scaledW - parseFloat(clipR)}px ${scaledH - parseFloat(clipB)}px ${clipL})`;
+                }
+
+                container.appendChild(imgEl);
+                div.appendChild(container);
+
+                const label = document.createElement('div');
+                label.className = 'label adjusting';
+                const cropInfo = (cropT || cropB || cropL || cropR) ? ` | Crop:${cropT},${cropR},${cropB},${cropL}` : '';
+                label.innerHTML = `${name.toUpperCase()} F${frameIdx}<br>
+                    <span class="info">Y:${yOffset} X:${xOffset} | S:${Math.round(scale*100)}%${cropInfo}</span>`;
+                div.appendChild(label);
+            }
 
             return div;
         }
@@ -877,6 +1036,7 @@
         // Adjustments
         function applyAdjustment() {
             const compare = document.getElementById('compare-select').value;
+            const frameIdx = parseInt(document.getElementById('compare-frame').value) % (frames[compare]?.length || 1);
             const y = parseInt(document.getElementById('adj-y').value) || 0;
             const x = parseInt(document.getElementById('adj-x').value) || 0;
             const scale = parseInt(document.getElementById('adj-scale').value) / 100;
@@ -885,13 +1045,14 @@
             const cropLeft = parseInt(document.getElementById('adj-crop-left').value) || 0;
             const cropRight = parseInt(document.getElementById('adj-crop-right').value) || 0;
 
-            SPRITES[compare].yOffset = y;
-            SPRITES[compare].xOffset = x;
-            SPRITES[compare].scale = scale;
-            SPRITES[compare].cropTop = cropTop;
-            SPRITES[compare].cropBottom = cropBottom;
-            SPRITES[compare].cropLeft = cropLeft;
-            SPRITES[compare].cropRight = cropRight;
+            const newConfig = {
+                yOffset: y, xOffset: x, scale: scale,
+                cropTop: cropTop, cropBottom: cropBottom, cropLeft: cropLeft, cropRight: cropRight,
+                prefix: SPRITES[compare].prefix, count: SPRITES[compare].count
+            };
+
+            // Use per-frame or global config based on mode
+            setAdjustmentConfig(compare, frameIdx, newConfig);
 
             // Sync number inputs
             document.getElementById('adj-y-num').value = y;
@@ -904,10 +1065,11 @@
 
             // Show size info
             if (frames[compare] && frames[compare].length > 0) {
-                const img = frames[compare][0];
+                const img = frames[compare][frameIdx];
                 const newW = img.naturalWidth - cropLeft - cropRight;
                 const newH = img.naturalHeight - cropTop - cropBottom;
-                document.getElementById('size-info').textContent = `Original: ${img.naturalWidth}x${img.naturalHeight} → After crop: ${newW}x${newH}`;
+                const modeLabel = perFrameMode ? `Frame ${frameIdx}` : 'All frames';
+                document.getElementById('size-info').textContent = `${modeLabel}: ${img.naturalWidth}x${img.naturalHeight} → After crop: ${newW}x${newH}`;
             }
 
             updateComparison();
@@ -931,36 +1093,157 @@
 
         function resetAdjustment() {
             const compare = document.getElementById('compare-select').value;
-            SPRITES[compare].yOffset = 0;
-            SPRITES[compare].xOffset = 0;
-            SPRITES[compare].scale = 1.0;
-            SPRITES[compare].cropTop = 0;
-            SPRITES[compare].cropBottom = 0;
-            SPRITES[compare].cropLeft = 0;
-            SPRITES[compare].cropRight = 0;
+            const frameIdx = parseInt(document.getElementById('compare-frame').value) % (frames[compare]?.length || 1);
+
+            const resetConfig = {
+                yOffset: 0, xOffset: 0, scale: 1.0,
+                cropTop: 0, cropBottom: 0, cropLeft: 0, cropRight: 0,
+                prefix: SPRITES[compare].prefix, count: SPRITES[compare].count
+            };
+
+            if (perFrameMode) {
+                // Reset just this frame
+                const key = `${compare}_${frameIdx}`;
+                delete perFrameAdjustments[key];
+            } else {
+                // Reset the whole sprite
+                Object.assign(SPRITES[compare], resetConfig);
+            }
+
             updateComparison();
         }
 
-        function applyToAll() {
-            alert('Adjustment saved! Go to Export tab to generate the Python script.');
+        // Track all saved adjustments
+        let savedAdjustments = {};  // { "front": {...}, "running": {...}, "front_3": {...} }
+
+        function saveCurrentAdjustment() {
+            const compare = document.getElementById('compare-select').value;
+            const frameIdx = parseInt(document.getElementById('compare-frame').value) % (frames[compare]?.length || 1);
+
+            const adjustment = {
+                yOffset: parseInt(document.getElementById('adj-y').value) || 0,
+                xOffset: parseInt(document.getElementById('adj-x').value) || 0,
+                scale: parseInt(document.getElementById('adj-scale').value) / 100,
+                cropTop: parseInt(document.getElementById('adj-crop-top').value) || 0,
+                cropBottom: parseInt(document.getElementById('adj-crop-bottom').value) || 0,
+                cropLeft: parseInt(document.getElementById('adj-crop-left').value) || 0,
+                cropRight: parseInt(document.getElementById('adj-crop-right').value) || 0,
+                prefix: SPRITES[compare].prefix,
+                count: SPRITES[compare].count
+            };
+
+            // Check if any actual adjustment was made
+            const hasAdjustment = adjustment.yOffset !== 0 || adjustment.xOffset !== 0 ||
+                adjustment.scale !== 1.0 || adjustment.cropTop !== 0 || adjustment.cropBottom !== 0 ||
+                adjustment.cropLeft !== 0 || adjustment.cropRight !== 0;
+
+            if (!hasAdjustment) {
+                alert('No adjustments to save (all values at default)');
+                return;
+            }
+
+            // Save to appropriate key (per-frame or global)
+            const key = perFrameMode ? `${compare}_${frameIdx}` : compare;
+            savedAdjustments[key] = adjustment;
+
+            // Also update the SPRITES object for live preview
+            if (perFrameMode) {
+                perFrameAdjustments[key] = { ...adjustment };
+            } else {
+                Object.assign(SPRITES[compare], adjustment);
+            }
+
+            updateAdjustmentsSummary();
+            updateComparison();
+
+            // Flash confirmation
+            const summary = document.getElementById('adjustments-summary');
+            summary.style.background = '#2a4a2a';
+            setTimeout(() => summary.style.background = '', 300);
+        }
+
+        function updateAdjustmentsSummary() {
+            const summary = document.getElementById('adjustments-summary');
+
+            if (Object.keys(savedAdjustments).length === 0) {
+                summary.innerHTML = 'No adjustments saved yet. Make changes and click "Save & Continue".';
+                return;
+            }
+
+            let html = '<table style="width:100%;border-collapse:collapse;">';
+            html += '<tr style="color:#27ae60;border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;">Sprite</th><th>Y</th><th>X</th><th>Scale</th><th>Crop</th><th></th></tr>';
+
+            for (const [key, adj] of Object.entries(savedAdjustments)) {
+                const cropStr = (adj.cropTop || adj.cropBottom || adj.cropLeft || adj.cropRight) ?
+                    `T:${adj.cropTop} R:${adj.cropRight} B:${adj.cropBottom} L:${adj.cropLeft}` : '-';
+                html += `<tr style="border-bottom:1px solid #222;">
+                    <td style="padding:4px;color:#f39c12;">${key}</td>
+                    <td style="text-align:center;">${adj.yOffset}</td>
+                    <td style="text-align:center;">${adj.xOffset}</td>
+                    <td style="text-align:center;">${Math.round(adj.scale * 100)}%</td>
+                    <td style="text-align:center;font-size:10px;">${cropStr}</td>
+                    <td><button onclick="removeAdjustment('${key}')" style="background:#c0392b;border:none;color:white;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:10px;">×</button></td>
+                </tr>`;
+            }
+            html += '</table>';
+            html += `<div style="margin-top:8px;color:#27ae60;">${Object.keys(savedAdjustments).length} adjustment(s) saved</div>`;
+
+            summary.innerHTML = html;
+        }
+
+        function removeAdjustment(key) {
+            delete savedAdjustments[key];
+            // Also reset in SPRITES/perFrameAdjustments
+            if (key.includes('_')) {
+                delete perFrameAdjustments[key];
+            } else if (SPRITES[key]) {
+                SPRITES[key].yOffset = 0;
+                SPRITES[key].xOffset = 0;
+                SPRITES[key].scale = 1.0;
+                SPRITES[key].cropTop = 0;
+                SPRITES[key].cropBottom = 0;
+                SPRITES[key].cropLeft = 0;
+                SPRITES[key].cropRight = 0;
+            }
+            updateAdjustmentsSummary();
+            updateComparison();
+        }
+
+        function clearAllAdjustments() {
+            if (!confirm('Clear all saved adjustments?')) return;
+            savedAdjustments = {};
+            perFrameAdjustments = {};
+            // Reset all SPRITES
+            for (const name of Object.keys(SPRITES)) {
+                SPRITES[name].yOffset = 0;
+                SPRITES[name].xOffset = 0;
+                SPRITES[name].scale = 1.0;
+                SPRITES[name].cropTop = 0;
+                SPRITES[name].cropBottom = 0;
+                SPRITES[name].cropLeft = 0;
+                SPRITES[name].cropRight = 0;
+            }
+            updateAdjustmentsSummary();
+            updateComparison();
         }
 
         // Grid functions
         function toggleGrid() {
             const show = document.getElementById('show-grid').checked;
-            const grid = document.getElementById('grid-overlay');
-            if (show) {
-                grid.classList.add('visible');
-                grid.innerHTML = '<div class="center-line-v"></div><div class="center-line-h"></div>';
-            } else {
-                grid.classList.remove('visible');
-            }
+            document.querySelectorAll('.sprite-grid').forEach(grid => {
+                if (show) {
+                    grid.classList.remove('hidden');
+                } else {
+                    grid.classList.add('hidden');
+                }
+            });
         }
 
         function updateGrid() {
             const size = parseInt(document.getElementById('grid-size').value) || 20;
-            const grid = document.getElementById('grid-overlay');
-            grid.style.backgroundSize = `${size}px ${size}px`;
+            document.querySelectorAll('.sprite-grid').forEach(grid => {
+                grid.style.backgroundSize = `${size}px ${size}px`;
+            });
         }
 
         // Per-frame mode
@@ -1076,11 +1359,28 @@
 
         // Export
         function generateExport() {
+            if (Object.keys(savedAdjustments).length === 0) {
+                document.getElementById('export-code').textContent = '# No adjustments saved!\n# Go to Compare & Adjust tab, make changes, and click "Save & Continue"';
+                return;
+            }
+
+            // Separate global vs per-frame adjustments
+            const globalAdj = {};
+            const perFrameAdj = {};
+
+            for (const [key, adj] of Object.entries(savedAdjustments)) {
+                if (key.includes('_') && /^\w+_\d+$/.test(key)) {
+                    perFrameAdj[key] = adj;
+                } else {
+                    globalAdj[key] = adj;
+                }
+            }
+
             let code = `#!/usr/bin/env python3
 """
 Sprite Adjustment Script
 Generated from Sprite Alignment Tool
-Apply these adjustments to fix sprite positioning
+${Object.keys(savedAdjustments).length} adjustment(s) to apply
 """
 
 from PIL import Image
@@ -1088,52 +1388,114 @@ import os
 
 ASSETS_DIR = "Sources/CatOnScreen/Resources/Assets"
 
-# Adjustment values from tool
-ADJUSTMENTS = {
+# Sprite metadata
+SPRITE_INFO = {
 `;
             for (const [name, config] of Object.entries(SPRITES)) {
-                code += `    "${name}": {"yOffset": ${config.yOffset}, "scale": ${config.scale.toFixed(2)}, "prefix": "${config.prefix}", "count": ${config.count}},\n`;
+                code += `    "${name}": {"prefix": "${config.prefix}", "count": ${config.count}},\n`;
             }
 
             code += `}
 
-def apply_adjustments():
-    for sprite_name, adj in ADJUSTMENTS.items():
-        if adj["yOffset"] == 0 and adj["scale"] == 1.0:
-            continue  # No adjustment needed
+# Global adjustments (apply to all frames of a sprite)
+GLOBAL_ADJUSTMENTS = {
+`;
+            for (const [name, adj] of Object.entries(globalAdj)) {
+                code += `    "${name}": {
+        "yOffset": ${adj.yOffset}, "xOffset": ${adj.xOffset || 0}, "scale": ${adj.scale.toFixed(2)},
+        "cropTop": ${adj.cropTop || 0}, "cropBottom": ${adj.cropBottom || 0},
+        "cropLeft": ${adj.cropLeft || 0}, "cropRight": ${adj.cropRight || 0}
+    },\n`;
+            }
 
-        print(f"\\nProcessing {sprite_name}...")
+            code += `}
 
-        for i in range(adj["count"]):
-            filename = f'{ASSETS_DIR}/{adj["prefix"]}_{i}.png'
+# Per-frame adjustments (apply to specific frames only)
+PER_FRAME_ADJUSTMENTS = {
+`;
+            for (const [key, adj] of Object.entries(perFrameAdj)) {
+                code += `    "${key}": {
+        "yOffset": ${adj.yOffset}, "xOffset": ${adj.xOffset || 0}, "scale": ${adj.scale.toFixed(2)},
+        "cropTop": ${adj.cropTop || 0}, "cropBottom": ${adj.cropBottom || 0},
+        "cropLeft": ${adj.cropLeft || 0}, "cropRight": ${adj.cropRight || 0}
+    },\n`;
+            }
+
+            code += `}
+
+def get_adjustment(sprite_name, frame_idx):
+    """Get adjustment for a specific frame (per-frame override or global)"""
+    key = f"{sprite_name}_{frame_idx}"
+    if key in PER_FRAME_ADJUSTMENTS:
+        return PER_FRAME_ADJUSTMENTS[key]
+    if sprite_name in GLOBAL_ADJUSTMENTS:
+        return GLOBAL_ADJUSTMENTS[sprite_name]
+    return None
+
+def apply_adjustment(img, adj):
+    """Apply adjustment to an image and return modified image"""
+    changes = []
+
+    # Apply crop first
+    cropT = adj.get("cropTop", 0)
+    cropB = adj.get("cropBottom", 0)
+    cropL = adj.get("cropLeft", 0)
+    cropR = adj.get("cropRight", 0)
+    if cropT or cropB or cropL or cropR:
+        new_w = img.width - cropL - cropR
+        new_h = img.height - cropT - cropB
+        img = img.crop((cropL, cropT, img.width - cropR, img.height - cropB))
+        changes.append(f"Cropped to {new_w}x{new_h}")
+
+    # Apply scale
+    scale = adj.get("scale", 1.0)
+    if scale != 1.0:
+        new_w = int(img.width * scale)
+        new_h = int(img.height * scale)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+        changes.append(f"Scaled to {img.size}")
+
+    # Apply offset (create canvas and paste)
+    yOffset = adj.get("yOffset", 0)
+    xOffset = adj.get("xOffset", 0)
+    if yOffset != 0 or xOffset != 0:
+        canvas = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        paste_x = xOffset
+        paste_y = -yOffset  # Positive Y = move up = negative paste_y
+        canvas.paste(img, (paste_x, paste_y), img)
+        img = canvas
+        changes.append(f"Offset Y:{yOffset} X:{xOffset}")
+
+    return img, changes
+
+def apply_all_adjustments():
+    print(f"Applying {len(GLOBAL_ADJUSTMENTS) + len(PER_FRAME_ADJUSTMENTS)} adjustment(s)...")
+
+    for sprite_name, info in SPRITE_INFO.items():
+        prefix = info["prefix"]
+        count = info["count"]
+
+        for i in range(count):
+            adj = get_adjustment(sprite_name, i)
+            if adj is None:
+                continue
+
+            filename = f'{ASSETS_DIR}/{prefix}_{i}.png'
             if not os.path.exists(filename):
+                print(f"  {sprite_name}_{i}: File not found")
                 continue
 
             img = Image.open(filename).convert('RGBA')
-            original_size = img.size
+            img, changes = apply_adjustment(img, adj)
 
-            # Apply scale if not 1.0
-            if adj["scale"] != 1.0:
-                new_w = int(img.width * adj["scale"])
-                new_h = int(img.height * adj["scale"])
-                img = img.resize((new_w, new_h), Image.LANCZOS)
-                print(f"  {i}: Scaled {original_size} -> {img.size}")
+            if changes:
+                print(f"  {sprite_name}_{i}: {', '.join(changes)}")
+                img.save(filename)
 
-            # Apply Y offset (positive = shift content UP = paste higher on canvas)
-            if adj["yOffset"] != 0:
-                canvas = Image.new('RGBA', img.size, (0, 0, 0, 0))
-                # yOffset > 0 means content should appear higher, so paste at negative y
-                paste_y = -adj["yOffset"]
-                canvas.paste(img, (0, paste_y), img)
-                img = canvas
-                print(f"  {i}: Y offset {adj['yOffset']}px")
-
-            img.save(filename)
-
-    print("\\n✅ Done! Adjustments applied.")
+    print("\\n Done! Adjustments applied.")
 
 if __name__ == "__main__":
-    apply_adjustments()
+    apply_all_adjustments()
 `;
 
             document.getElementById('export-code').textContent = code;

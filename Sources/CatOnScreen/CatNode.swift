@@ -6,6 +6,7 @@ enum CatState {
     case interacting
     case jumping
     case sleeping
+    case scratching
 }
 
 class CatNode: SKSpriteNode {
@@ -24,12 +25,18 @@ class CatNode: SKSpriteNode {
 
     // Textures
     private var walkingTextures: [SKTexture] = []
+    private var sitdownTextures: [SKTexture] = []
     private var idleTexture: SKTexture?
     private var petTexture: SKTexture?
     private var scratchTexture: SKTexture?
     private var eatTexture: SKTexture?
     private var jumpTexture: SKTexture?
     private var sleepTexture: SKTexture?
+
+    // Random scratch behavior
+    private var lastScratchTime: Date = Date()
+    private var scratchCount: Int = 0
+    private var distanceWalked: CGFloat = 0
 
     // Idle detection
     private var lastIdleCheck: Date = Date()
@@ -77,7 +84,7 @@ class CatNode: SKSpriteNode {
                 walkingTextures.append(tex)
             }
         }
-        NSLog("🐱 Loaded \(walkingTextures.count) walking frames")
+        NSLog("🐱 Loaded \(walkingTextures.count) walking frames - NOW LOADING SITDOWN")
 
         if walkingTextures.isEmpty {
             NSLog("⚠️ No walking frames found, trying fallback")
@@ -85,6 +92,20 @@ class CatNode: SKSpriteNode {
                 walkingTextures.append(tex)
             }
         }
+
+        // Sitdown/scratch frames
+        NSLog("🐱 SITDOWN: Starting to load sitdown textures")
+        for i in 0...7 {
+            let name = "cat_sitdown_\(i)"
+            NSLog("🐱 SITDOWN: Trying to load \(name)")
+            if let tex = getTexture(name: name) {
+                sitdownTextures.append(tex)
+                NSLog("🐱 SITDOWN: Success loading \(name)")
+            } else {
+                NSLog("⚠️ SITDOWN: Failed to load \(name)")
+            }
+        }
+        NSLog("🐱 SITDOWN: Total frames loaded: \(sitdownTextures.count)")
 
         idleTexture = getTexture(name: "cat_sitting")
         petTexture = getTexture(name: "cat_being_petted")
@@ -115,8 +136,11 @@ class CatNode: SKSpriteNode {
         // Start on floor if no position set
         if position == .zero {
             baseY = WindowDetector.shared.floorLevel
-            position = CGPoint(x: -50, y: baseY)
-            direction = 1
+            // Random start position and direction
+            let screenWidth = NSScreen.main?.frame.width ?? 800
+            direction = Bool.random() ? 1 : -1
+            let startX = direction > 0 ? CGFloat(50) : screenWidth - 50
+            position = CGPoint(x: startX, y: baseY)
         } else {
             baseY = position.y
         }
@@ -134,6 +158,21 @@ class CatNode: SKSpriteNode {
 
         let detector = WindowDetector.shared
         let moveAmount = walkSpeed * CGFloat(deltaTime) * direction
+
+        // Track distance for random scratch behavior
+        distanceWalked += abs(moveAmount)
+
+        // Random scratch: after walking some distance, chance to stop and scratch
+        // Check every ~200px walked
+        if distanceWalked > 200 {
+            distanceWalked = 0
+            // 20% chance to scratch, max 3 per trip
+            if scratchCount < 3 && Int.random(in: 0...4) == 0 {
+                NSLog("🐱 Triggering scratch! count=\(scratchCount)")
+                performSitAndScratch()
+                return
+            }
+        }
 
         // Update bob phase (synced to walk animation - 2 bobs per 0.8s cycle)
         bobPhase += CGFloat(deltaTime) * 2 * .pi / 0.4  // 0.4s per bob cycle
@@ -191,18 +230,62 @@ class CatNode: SKSpriteNode {
             }
         }
 
-        // Screen bounds check
+        // Screen bounds check - turn around at edges
         let screenWidth = NSScreen.main?.frame.width ?? 800
-        if newX > screenWidth + 50 {
-            newX = -50
-        } else if newX < -50 {
-            newX = screenWidth + 50
+        let margin: CGFloat = 30
+
+        if newX > screenWidth - margin {
+            newX = screenWidth - margin
+            direction = -1
+            updateFacing()
+            scratchCount = 0  // Reset for next trip
+            distanceWalked = 0
+        } else if newX < margin {
+            newX = margin
+            direction = 1
+            updateFacing()
+            scratchCount = 0  // Reset for next trip
+            distanceWalked = 0
         }
 
         position = CGPoint(x: newX, y: newY)
 
         // Idle check
         checkIdleState()
+    }
+
+    // MARK: - Sit and Scratch
+
+    private func performSitAndScratch() {
+        NSLog("🐱 performSitAndScratch called, textures: \(sitdownTextures.count)")
+        guard !sitdownTextures.isEmpty else {
+            NSLog("⚠️ No sitdown textures!")
+            return
+        }
+
+        NSLog("🐱 Starting scratch animation!")
+        state = .scratching
+        removeAllActions()
+        scratchCount += 1
+        distanceWalked = 0
+
+        // Play the full sitdown/scratch animation
+        let animateAction = SKAction.animate(with: sitdownTextures, timePerFrame: 0.15)
+
+        // After animation, maybe change direction randomly (30% chance)
+        let resume = SKAction.run { [weak self] in
+            guard let self = self else { return }
+
+            // Random direction change after scratching
+            if Int.random(in: 0...2) == 0 {
+                self.direction *= -1
+                self.updateFacing()
+            }
+
+            self.startWalking()
+        }
+
+        run(SKAction.sequence([animateAction, resume]), withKey: "scratch")
     }
 
     // MARK: - Jumping
